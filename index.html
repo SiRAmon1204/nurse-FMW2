@@ -383,32 +383,52 @@ var COLORS=[
 var TH_D=['อา','จ','อ','พ','พฤ','ศ','ส'];
 var TH_M=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 
-// STATE
-var API_URL='https://script.google.com/macros/s/AKfycbzlP3xUCay5FSm_kdfNbvo2TLikMDDyQ8S89d5H0FSqzAdczETYYqX7_ljjh0YjuwgG4Q/exec';
-var staff=[], entries={}, dayOverrides={}, defaultMax=2;
+// ═══════════════════════════════════════════════════
+// 🔧 ใส่ Apps Script URL ตรงนี้เลย (ครั้งเดียว)
+// ═══════════════════════════════════════════════════
+var HARDCODED_API_URL = 'https://script.google.com/macros/s/AKfycbzlP3xUCay5FSm_kdfNbvo2TLikMDDyQ8S89d5H0FSqzAdczETYYqX7_ljjh0YjuwgG4Q/exec';
+// ═══════════════════════════════════════════════════
+var API_URL=HARDCODED_API_URL;
 var selectedId=null, curY, curM, pendingFn=null, openPopupId=null, dragSrcIdx=null;
 
 function daysInMonth(y,m){return new Date(y,m+1,0).getDate();}
 function getHolidayName(y,m,d){var be=y+543;return THAI_HOLIDAYS[be]&&THAI_HOLIDAYS[be][m]&&THAI_HOLIDAYS[be][m].find(function(h){return h.d===d;})||null;}
 
 // ═══════════════════════════════════════════════════
-// API
+// API — ใช้ JSONP แทน fetch เพื่อหลีกเลี่ยง CORS
 // ═══════════════════════════════════════════════════
-async function api(params) {
-  setSyncStatus('syncing');
-  try {
-    var url = API_URL + '?' + Object.keys(params).map(function(k){
+function api(params) {
+  return new Promise(function(resolve, reject) {
+    setSyncStatus('syncing');
+    var cbName = 'cb_' + Date.now();
+    var url = API_URL + '?callback=' + cbName + '&' + Object.keys(params).map(function(k){
       return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
     }).join('&');
-    var res = await fetch(url);
-    var data = await res.json();
-    if(data.ok !== false) setSyncStatus('ok');
-    else setSyncStatus('err');
-    return data;
-  } catch(e) {
-    setSyncStatus('err');
-    return {ok:false, error:e.toString()};
-  }
+    var script = document.createElement('script');
+    var timer = setTimeout(function(){
+      cleanup();
+      setSyncStatus('err');
+      resolve({ok:false, error:'Timeout'});
+    }, 15000);
+    window[cbName] = function(data) {
+      cleanup();
+      if(data.ok !== false) setSyncStatus('ok');
+      else setSyncStatus('err');
+      resolve(data);
+    };
+    function cleanup(){
+      clearTimeout(timer);
+      delete window[cbName];
+      if(script.parentNode) script.parentNode.removeChild(script);
+    }
+    script.onerror = function(){
+      cleanup();
+      setSyncStatus('err');
+      resolve({ok:false, error:'Load failed'});
+    };
+    script.src = url;
+    document.head.appendChild(script);
+  });
 }
 
 function setSyncStatus(state) {
@@ -869,7 +889,7 @@ function hideLoading(){document.getElementById('loadingScreen').style.display='n
 
 // ── START ──────────────────────────────────────────
 window.onload=function(){
-  API_URL='https://script.google.com/macros/s/AKfycbzlP3xUCay5FSm_kdfNbvo2TLikMDDyQ8S89d5H0FSqzAdczETYYqX7_ljjh0YjuwgG4Q/exec';
+  // ข้าม setup screen — ใช้ URL ที่ฝังไว้ในโค้ดเลย
   document.getElementById('setupScreen').style.display='none';
   startApp();
 };
