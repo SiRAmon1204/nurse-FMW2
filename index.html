@@ -869,13 +869,11 @@ function hideLoading(){document.getElementById('loadingScreen').style.display='n
 
 // ── START ──────────────────────────────────────────
 window.onload=function(){
-  var saved=localStorage.getItem('shift_api_url');
-  if(saved){
-    API_URL=saved;
-    document.getElementById('setupScreen').style.display='none';
-    startApp();
-  }
-  // ถ้าไม่มี URL จะแสดง setup screen อัตโนมัติ
+  API_URL='https://script.google.com/macros/s/AKfycbzlP3xUCay5FSm_kdfNbvo2TLikMDDyQ8S89d5H0FSqzAdczETYYqX7_ljjh0YjuwgG4Q/exec';
+  document.getElementById('setupScreen').style.display='none';
+  startApp();
+};
+
 };
 </script>
 </body>
